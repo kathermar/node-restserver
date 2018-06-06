@@ -1,7 +1,12 @@
 const express = require('express');
-const app = express();
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const app = express();
+
+
 require('./config/config');
+app.use(require('./routes/usuario'));
+
 
 
 // parse application/x-www-form-urlencoded
@@ -10,44 +15,16 @@ app.use(bodyParser.urlencoded({ extended: false }))
 // parse application/json
 app.use(bodyParser.json())
 
-app.get('/usuario', function(req, res) {
-    res.send('get usuario')
-})
-
-// el post es para crear nuevos registros
-app.post('/usuario', function(req, res) {
-
-    let body = req.body;
-    if (body.nombre === undefined) {
-        res.status(400).json({
-            ok: false,
-            mensaje: 'el nombre es necesario'
-        });
-    } else {
 
 
-        res.json({
-            body
-        });
-    }
-})
+// aquin hacemos la conexion con la base de datos mongodb
+// especificamos el puerto que en este caso es el 27017 y el nombre de la base de datos que es: cafe
+mongoose.connect(process.env.URLDB, (err, res) => {
 
+    if (err) throw err;
+    console.log('Base de datos ONLINE');
 
-//put para actualizar data 
-
-app.put('/usuario/:id', function(req, res) {
-
-    let id = req.params.id;
-
-    res.json({
-        id
-    });
 });
-
-//delete para borrar, cambiar el status
-app.delete('/usuario', function(req, res) {
-    res.send('delete usuario')
-})
 
 app.listen(process.env.PORT, () => {
 
