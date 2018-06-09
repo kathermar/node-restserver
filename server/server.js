@@ -5,7 +5,9 @@ const app = express();
 
 
 require('./config/config');
-app.use(require('./routes/usuario'));
+//configuracion global de rutas
+app.use(require('./routes/index'));
+
 
 
 
