@@ -91,7 +91,7 @@ app.post('/google', async(req, res) => {
 
     let googleUser = await verify(token)
         .catch(e => {
-            res.status(403).json({
+            return res.status(403).json({
                 ok: false,
                 err: e
             });
@@ -111,7 +111,9 @@ app.post('/google', async(req, res) => {
             if (usuarioDB.google === false) {
                 return res.status(400).json({
                     ok: false,
-                    err: { message: 'debe usar su autentificacion normal' }
+                    err: {
+                        message: 'debe usar su autentificacion normal'
+                    }
                 });
             } else {
                 let token = jwt.sign({

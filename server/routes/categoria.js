@@ -2,8 +2,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 
-const { verificaToken } = require('../middlewares/autenticacion');
-const Categoria = requiere('../models/categoria');
+const { verificaToken, verificaAdmin_Role } = require('../middlewares/autenticacion');
+const Categoria = require('../models/categoria.js');
+const Usuario = require('../models/usuario.js');
+
 const app = express();
 
 
@@ -12,44 +14,59 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
 
-app.get('/categoria', verificaToken, function(req, res) {
-
-    let desde = req.query.desde || 0;
-    desde = Number(desde);
-
-    let limite = req.query.limite || 5;
-    limite = Number(limite);
-
-    // aqui le digo que campos quiero que muestre o que condiciones
-    Categoria.find({ estado: true }, 'nombre')
-        // con limit le estoy diciendo que me retorne solo 5 registros
-        // con el skip le digo que se salte los primeros 5 registros
-        .skip(desde)
-        .limit(limite)
+app.get('/categoria', verificaToken, (req, res) => {
+    // retorna todas las categorias
+    Categoria.find({})
+        .sort('descripcion')
+        // no se estan mostrando
+        .populate('usuario', 'nombre email')
         .exec((err, categorias) => {
+
             if (err) {
-                return res.status(400).json({
+                return res.status(500).json({
                     ok: false,
                     err
                 });
             }
-            Usuario.count({ esto: true }, (err, conteo) => {
-                res.json({
-                    ok: true,
-                    categorias,
-                    cuantos: conteo
-                })
-            });
 
             res.json({
                 ok: true,
                 categorias
-            })
+            });
+        })
 
+});
+
+
+app.get('/categoria:id', verificaToken, function(req, res) {
+
+    let id = req.params.id;
+
+    Categoria.findById(id, (err, categoriaDB) => {
+
+        if (err) {
+            return res.status(500).json({
+                ok: false,
+                err
+            });
+        }
+
+        if (!categoriaDB) {
+            return res.status(500).json({
+                ok: false,
+                err: {
+                    message: 'El ID no es correcto'
+                }
+            });
+        }
+
+
+        res.json({
+            ok: true,
+            categoria: categoriaDB
         });
 
-
-
+    });
 });
 
 // el post es para crear nuevos registros
@@ -111,12 +128,22 @@ app.post('/categoria', verificaToken, function(req, res) {
 app.put('/categoria/:id', [verificaToken], function(req, res) {
 
     let id = req.params.id;
-    let body = _.pick(req.body, ['nombre']);
+    let body = req.body;
 
+
+    let descCategoria = {
+        descripcion: body.descripcion
+    };
     // el new: true nos permite ver el valor que estamos modificando
     // run validator permite que se tomen en cuenta las validaciones colocadas en el schema
-    Categoria.findByIdAndUpdate(id, body, { new: true, runValidators: true }, (err, CategoriaDB) => {
+    Categoria.findByIdAndUpdate(id, descCategoria, { new: true, runValidators: true }, (err, categoriaDB) => {
         if (err) {
+            return res.status(400).json({
+                ok: false,
+                err
+            });
+        }
+        if (!categoriaDB) {
             return res.status(400).json({
                 ok: false,
                 err
@@ -124,7 +151,7 @@ app.put('/categoria/:id', [verificaToken], function(req, res) {
         }
         res.json({
             ok: true,
-            categoria: CategoriaDB
+            categoria: categoriaDB
         });
 
     });
@@ -133,15 +160,13 @@ app.put('/categoria/:id', [verificaToken], function(req, res) {
 });
 
 //delete para borrar, cambiar el status
-app.delete('/categoria/:id', verificaToken, function(req, res) {
+app.delete('/categoria/:id', [verificaToken, verificaAdmin_Role], (req, res) => {
 
     let id = req.params.id;
-    let cambiaEstado = {
-        estado: false
-    };
+
     //la eliminacio fisica se hacce utilizando la funcion .findAndRemove del schema
     //pero la eliminacion que debe usarse es la logica cambiando el estado
-    Usuario.findByIdAndUpdate(id, cambiaEstado, { new: true }, (err, CategoriaBorrada) => {
+    Usuario.findByIdAndRemove(id, (err, CategoriaBorrada) => {
         if (err) {
             return res.status(400).json({
                 ok: false,
@@ -152,14 +177,14 @@ app.delete('/categoria/:id', verificaToken, function(req, res) {
             return res.status(400).json({
                 ok: false,
                 err: {
-                    message: 'Categoria no encontrada'
+                    message: 'id no existe'
                 }
 
             });
         }
         res.json({
             ok: true,
-            usuario: CategoriaBorrado
+            usuario: CategoriaBorrada
         });
 
     });
